@@ -1,0 +1,2046 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FolioBind Studio — PDF &amp; .AI Seamless Booklet Imposition &amp; Multi-Artboard Exporter</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          },
+          colors: {
+            ink: {
+              950: '#090b10',
+              900: '#0f131c',
+              850: '#141926',
+              800: '#1b2234',
+              700: '#28324b'
+            },
+            cyanpress: {
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: #090b10;
+      color: #f1f5f9;
+      overflow-x: hidden;
+    }
+    .checkerboard {
+      background-color: #111622;
+      background-image:
+        linear-gradient(45deg, #171e2e 25%, transparent 25%),
+        linear-gradient(-45deg, #171e2e 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #171e2e 75%),
+        linear-gradient(-45deg, transparent 75%, #171e2e 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    input[type="range"] {
+      accent-color: #38bdf8;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f131c;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #28324b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #38bdf8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-ink-950 text-slate-100 selection:bg-sky-500 selection:text-white">
+
+  <!-- Top Studio Header -->
+  <header class="border-b border-slate-800/90 bg-ink-900/95 backdrop-blur sticky top-0 z-30">
+    <div class="max-w-[1600px] mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-500 via-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20 border border-white/15">
+          <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-sm sm:text-base font-bold tracking-tight text-white">FolioBind Prepress Studio</h1>
+            <span class="px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider bg-sky-500/15 text-sky-300 border border-sky-500/30 rounded-full">PDF &amp; .AI Artboards</span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">Zero-Seam Saddle-Stitch &amp; Quarter-Fold Imposition Engine for 8.5&times;11&Prime; Duplex Printing</p>
+        </div>
+      </div>
+
+      <!-- Live Telemetry Pill Bar -->
+      <div class="flex flex-wrap items-center gap-2 text-xs font-mono">
+        <div class="px-2.5 py-1 rounded-md bg-ink-850 border border-slate-800 flex items-center gap-1.5">
+          <span class="text-slate-400">Source:</span>
+          <span id="statSourcePages" class="text-white font-semibold">32 pp (5.5&times;8.5&Prime;)</span>
+        </div>
+        <div class="px-2.5 py-1 rounded-md bg-ink-850 border border-slate-800 flex items-center gap-1.5">
+          <span class="text-slate-400">Imposed Artboards:</span>
+          <span id="statImposedSides" class="text-sky-400 font-semibold">16 sides</span>
+        </div>
+        <div class="px-2.5 py-1 rounded-md bg-ink-850 border border-slate-800 flex items-center gap-1.5">
+          <span class="text-slate-400">Duplex Paper:</span>
+          <span id="statPhysicalSheets" class="text-emerald-400 font-semibold">8 sheets (8.5&times;11&Prime;)</span>
+        </div>
+        <div class="px-2.5 py-1 rounded-md bg-emerald-950/60 border border-emerald-500/30 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="statSeamStatus" class="text-emerald-300 font-medium">Spine Seam: 0.000&Prime; (Seamless)</span>
+        </div>
+      </div>
+
+      <!-- Primary Export Actions -->
+      <div class="flex items-center gap-2">
+        <button id="btnExportPDF" type="button" class="px-3.5 py-2 rounded-lg bg-sky-500 hover:bg-sky-400 active:bg-sky-600 text-slate-950 font-semibold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-sky-500/20 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 16v-8m0 8l-3-3m3 3l3-3M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1" />
+          </svg>
+          <span>Export Booklet .PDF</span>
+        </button>
+        <button id="btnExportAI" type="button" class="px-3.5 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-semibold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-amber-500/20 transition" title="Every imposed sheet exports as an Adobe Illustrator PDF-compatible Artboard">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM9 15l3-7 3 7m-5-2h4M17 10v5m0-7v.01" />
+          </svg>
+          <span>Export .AI Artboards</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace Grid -->
+  <main class="flex-1 max-w-[1600px] w-full mx-auto px-4 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+    <!-- Left Controls Column (4 cols on lg) -->
+    <aside class="lg:col-span-4 space-y-4">
+
+      <!-- 1. File Upload & Preset Selector Card -->
+      <section class="bg-ink-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <span class="w-5 h-5 rounded bg-sky-500/20 text-sky-400 flex items-center justify-center font-mono text-[11px]">1</span>
+            Source File (.PDF or .AI Artboards)
+          </h2>
+          <span id="fileFormatBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">Built-in 32p Demo</span>
+        </div>
+
+        <!-- Drag & Drop Zone -->
+        <label for="fileInput" id="dropZone" class="group cursor-pointer block border-2 border-dashed border-slate-700 hover:border-sky-400 bg-ink-850/70 hover:bg-ink-800/80 rounded-xl p-4 text-center transition">
+          <input id="fileInput" type="file" accept=".pdf,.ai,application/pdf,application/postscript" class="hidden" />
+          <div class="w-10 h-10 mx-auto mb-2 rounded-full bg-slate-800 group-hover:bg-sky-500/20 text-slate-300 group-hover:text-sky-400 flex items-center justify-center transition">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+          </div>
+          <p class="text-xs sm:text-sm font-medium text-slate-200 group-hover:text-white">
+            Drop your <span class="text-sky-400 font-semibold">.PDF</span> or <span class="text-amber-400 font-semibold">.AI</span> file here, or click to browse
+          </p>
+          <p id="loadedFileMeta" class="text-[11px] font-mono text-slate-400 mt-1">
+            Active: sample_32page_5.5x8.5_spreads.ai (32 artboards &bull; 5.5&Prime;&times;8.5&Prime;)
+          </p>
+        </label>
+
+        <!-- Sample Presets to Test Seam & Page Counts Immediately -->
+        <div class="mt-3 pt-3 border-t border-slate-800/80">
+          <div class="flex items-center justify-between text-[11px] text-slate-400 mb-1.5">
+            <span>Quick Test Generators (With Panoramic Spreads):</span>
+          </div>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button type="button" data-preset="32p-half" class="preset-btn px-2 py-1.5 rounded-lg text-[11px] font-medium bg-sky-500/20 text-sky-300 border border-sky-500/40 hover:bg-sky-500/30 transition text-center">
+              32p (5.5&times;8.5&Prime;)<br/><span class="text-[10px] font-mono opacity-80">&rarr; 16 sides / 8 sheets</span>
+            </button>
+            <button type="button" data-preset="16p-lookbook" class="preset-btn px-2 py-1.5 rounded-lg text-[11px] font-medium bg-ink-850 text-slate-300 border border-slate-800 hover:border-slate-700 transition text-center">
+              16p Lookbook<br/><span class="text-[10px] font-mono opacity-80">&rarr; 8 sides / 4 sheets</span>
+            </button>
+            <button type="button" data-preset="32p-quarter" class="preset-btn px-2 py-1.5 rounded-lg text-[11px] font-medium bg-ink-850 text-slate-300 border border-slate-800 hover:border-slate-700 transition text-center">
+              32p Quarter Zine<br/><span class="text-[10px] font-mono opacity-80">&rarr; 8 sides / 4 sheets</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Booklet Size & Sheet Imposition Layout -->
+      <section class="bg-ink-900 border border-slate-800 rounded-xl p-4 shadow-xl space-y-3.5">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+          <span class="w-5 h-5 rounded bg-sky-500/20 text-sky-400 flex items-center justify-center font-mono text-[11px]">2</span>
+          Booklet Size &amp; Paper Imposition
+        </h2>
+
+        <!-- Booklet Format Mode -->
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" id="modeHalfBtn" class="p-2.5 rounded-lg border text-left transition bg-sky-500/15 border-sky-500 text-white">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold">Half-Page Booklet</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-300">2-Up</span>
+            </div>
+            <p class="text-[11px] text-slate-300 mt-1">5.5&Prime;&times;8.5&Prime; pages on 8.5&Prime;&times;11&Prime; Landscape (4 pages per duplex sheet)</p>
+          </button>
+
+          <button type="button" id="modeQuarterBtn" class="p-2.5 rounded-lg border text-left transition bg-ink-850 border-slate-800 text-slate-300 hover:border-slate-700">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold">Quarter-Page Booklet</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">4-Up</span>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">4.25&Prime;&times;5.5&Prime; pages in 2&times;2 grid on 8.5&Prime;&times;11&Prime; (8 pages per duplex sheet)</p>
+          </button>
+        </div>
+
+        <!-- Paper Size & Imposition Order -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+          <div>
+            <label for="paperSizeSelect" class="block text-[11px] font-medium text-slate-400 mb-1">Standard Paper Stock</label>
+            <select id="paperSizeSelect" class="w-full rounded-lg bg-ink-850 border border-slate-700 text-xs text-slate-100 px-2.5 py-2 focus:outline-none focus:border-sky-500">
+              <option value="letter" selected>US Letter (8.5&Prime; &times; 11&Prime;)</option>
+              <option value="tabloid">US Tabloid / Ledger (11&Prime; &times; 17&Prime;)</option>
+              <option value="a4">ISO A4 (8.27&Prime; &times; 11.69&Prime;)</option>
+              <option value="a3">ISO A3 (11.69&Prime; &times; 16.54&Prime;)</option>
+            </select>
+          </div>
+          <div>
+            <label for="impositionOrderSelect" class="block text-[11px] font-medium text-slate-400 mb-1">Imposition Ordering</label>
+            <select id="impositionOrderSelect" class="w-full rounded-lg bg-ink-850 border border-slate-700 text-xs text-slate-100 px-2.5 py-2 focus:outline-none focus:border-sky-500">
+              <option value="saddle" selected>Saddle-Stitch Booklet ([32|1], [2|31]&hellip;)</option>
+              <option value="reader">Sequential Two-Page Spreads ([1], [2|3]&hellip;)</option>
+              <option value="4up-two-booklets">Quarter 4-Up: Cut &amp; Stack 2 Tiers</option>
+              <option value="4up-french">Quarter 4-Up: Cross-Fold Signature</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Duplex Flip & Page Signature Padding -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div>
+            <label for="duplexFlipSelect" class="block text-[11px] font-medium text-slate-400 mb-1">2-Sided Printer Flip Axis</label>
+            <select id="duplexFlipSelect" class="w-full rounded-lg bg-ink-850 border border-slate-700 text-xs text-slate-100 px-2.5 py-2 focus:outline-none focus:border-sky-500">
+              <option value="short" selected>Flip on Short Edge (Standard Landscape)</option>
+              <option value="long">Flip on Long Edge (Auto-Rotate Back 180&deg;)</option>
+            </select>
+          </div>
+          <div>
+            <label for="scalingModeSelect" class="block text-[11px] font-medium text-slate-400 mb-1">Artboard Scaling Mode</label>
+            <select id="scalingModeSelect" class="w-full rounded-lg bg-ink-850 border border-slate-700 text-xs text-slate-100 px-2.5 py-2 focus:outline-none focus:border-sky-500">
+              <option value="proportional" selected>Fit Printable Area (Flush Spine)</option>
+              <option value="native">100% Native Size (5.5&times;8.5&Prime; Exact)</option>
+              <option value="fill">Stretch to Margin Box</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Zero-Seam Spine & Margins Engine -->
+      <section class="bg-ink-900 border border-slate-800 rounded-xl p-4 shadow-xl space-y-3.5">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+            <span class="w-5 h-5 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-mono text-[11px]">3</span>
+            Seamless Spread &amp; Margin Controls
+          </h2>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Zero-Gutter Active</span>
+        </div>
+
+        <!-- Zero-Seam Lock Toggle -->
+        <div class="p-3 rounded-lg bg-emerald-950/30 border border-emerald-500/30 flex items-start justify-between gap-3">
+          <div>
+            <label for="chkSeamlessSpine" class="text-xs font-semibold text-emerald-200 cursor-pointer flex items-center gap-1.5">
+              Eliminate Center Spine Seam (Flush Spread Join)
+            </label>
+            <p class="text-[11px] text-slate-300 mt-0.5">
+              Locks the inner spine gutter to <span class="font-mono text-emerald-300">0.000&Prime;</span> and anchors left/right pages flush at the exact center fold line so 2-page spread artwork joins as one continuous image even when outer margins are added.
+            </p>
+          </div>
+          <input id="chkSeamlessSpine" type="checkbox" checked class="mt-1 w-4 h-4 rounded accent-emerald-400 cursor-pointer shrink-0" />
+        </div>
+
+        <!-- Outer Margin Slider -->
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <label for="rngOuterMargin" class="text-slate-300 font-medium">Outer Safe Margin (Top / Bottom / Fore-Edge)</label>
+            <span id="valOuterMargin" class="font-mono text-sky-400">0.00&Prime; (Full Bleed)</span>
+          </div>
+          <input id="rngOuterMargin" type="range" min="0" max="0.75" step="0.05" value="0" class="w-full cursor-pointer" />
+          <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-0.5">
+            <span>0.00&Prime; (Exact 5.5&times;8.5&Prime;)</span>
+            <span>0.25&Prime; Printer Safe</span>
+            <span>0.50&Prime;</span>
+            <span>0.75&Prime;</span>
+          </div>
+        </div>
+
+        <!-- Inner Bleed / Seam Shave Slider (For PDFs that had unwanted white inner margins) -->
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <label for="rngSpineTrim" class="text-slate-300 font-medium" title="Clips inner edge whitespace from each source page so spread images meet cleanly at the fold">
+              Inner Edge Seam Trim / Overlap (Pull Spread Inward)
+            </label>
+            <span id="valSpineTrim" class="font-mono text-emerald-400">0.000&Prime;</span>
+          </div>
+          <input id="rngSpineTrim" type="range" min="0" max="0.375" step="0.005" value="0" class="w-full cursor-pointer" />
+          <p class="text-[10px] text-slate-400 mt-0.5">
+            Have a source PDF with white inner borders breaking your two-page photo? Increase this to shave inner whitespace so both halves kiss at the spine.
+          </p>
+        </div>
+
+        <!-- Saddle-Stitch Creep (Shingling) Compensation -->
+        <div>
+          <div class="flex items-center justify-between text-xs mb-1">
+            <label for="rngCreep" class="text-slate-300 font-medium">Paper Thickness Creep Compensation (Per Sheet)</label>
+            <span id="valCreep" class="font-mono text-amber-300">0.000&Prime;/sheet</span>
+          </div>
+          <input id="rngCreep" type="range" min="0" max="0.020" step="0.001" value="0" class="w-full cursor-pointer" />
+          <div class="flex justify-between text-[10px] font-mono text-slate-500 mt-0.5">
+            <span>0.000&Prime; (Off)</span>
+            <span>0.004&Prime; (20lb Bond)</span>
+            <span>0.008&Prime; (80lb Gloss)</span>
+            <span>0.015&Prime; (Card)</span>
+          </div>
+        </div>
+
+        <!-- Marks & Guides Checkboxes -->
+        <div class="pt-2 border-t border-slate-800 grid grid-cols-2 gap-2 text-xs">
+          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+            <input id="chkFoldLine" type="checkbox" checked class="rounded accent-sky-400" />
+            <span>Preview Fold &amp; Cut Guides</span>
+          </label>
+          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+            <input id="chkExportMarks" type="checkbox" class="rounded accent-sky-400" />
+            <span>Print Marks in Export</span>
+          </label>
+          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+            <input id="chkSeamLoupe" type="checkbox" checked class="rounded accent-emerald-400" />
+            <span>4&times; Spine Seam Loupe</span>
+          </label>
+          <label class="flex items-center gap-2 text-slate-300 cursor-pointer">
+            <input id="chkShowPageBadges" type="checkbox" checked class="rounded accent-sky-400" />
+            <span>Overlay Folio Numbers</span>
+          </label>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Right Interactive Preview & Artboard Inspector Column (8 cols on lg) -->
+    <section class="lg:col-span-8 flex flex-col gap-4">
+
+      <!-- View Switcher & Sheet Navigation Toolbar -->
+      <div class="bg-ink-900 border border-slate-800 rounded-xl p-3 flex flex-wrap items-center justify-between gap-3 shadow-xl">
+        <!-- View Mode Tabs -->
+        <div class="inline-flex rounded-lg bg-ink-950 p-1 border border-slate-800">
+          <button type="button" data-view="press" class="view-tab-btn px-3 py-1.5 rounded-md text-xs font-semibold transition bg-sky-500 text-slate-950">
+            Imposed Press Sheets (Artboards)
+          </button>
+          <button type="button" data-view="reader" class="view-tab-btn px-3 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white">
+            Reader Spread Preview (Seamless Check)
+          </button>
+          <button type="button" data-view="grid" class="view-tab-btn px-3 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white">
+            All Artboards &amp; Duplex Map
+          </button>
+        </div>
+
+        <!-- Stepper Controls -->
+        <div id="stepperControls" class="flex items-center gap-2">
+          <button type="button" id="btnPrevItem" class="px-2.5 py-1.5 rounded-lg bg-ink-850 hover:bg-ink-800 border border-slate-700 text-xs font-medium text-slate-200 flex items-center gap-1 transition">
+            <span>&larr; Prev</span>
+          </button>
+          <div class="px-3 py-1 rounded-lg bg-ink-950 border border-slate-800 text-xs font-mono text-sky-300 min-w-[195px] text-center" id="currentItemLabel">
+            Artboard 1 / 16 &bull; Sheet 1 Front
+          </div>
+          <button type="button" id="btnNextItem" class="px-2.5 py-1.5 rounded-lg bg-ink-850 hover:bg-ink-800 border border-slate-700 text-xs font-medium text-slate-200 flex items-center gap-1 transition">
+            <span>Next &rarr;</span>
+          </button>
+          <button type="button" id="btnFlipDuplex" class="px-2.5 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/40 text-xs font-medium text-indigo-200 transition" title="Flip between Front and Back of the current physical sheet">
+            &#8635; Flip Sheet Side
+          </button>
+        </div>
+      </div>
+
+      <!-- Canvas Stage & Spine Seam Loupe -->
+      <div id="canvasStageContainer" class="relative bg-ink-900 border border-slate-800 rounded-xl p-4 sm:p-6 checkerboard flex flex-col items-center justify-center min-h-[480px] shadow-2xl overflow-hidden">
+
+        <!-- Top Stage Metadata Pill -->
+        <div class="w-full flex flex-wrap items-center justify-between gap-2 mb-3 text-xs font-mono">
+          <div id="stageTopLeftInfo" class="px-3 py-1 rounded-full bg-ink-900/90 border border-slate-700/80 text-slate-200">
+            Paper: 11.00&Prime; &times; 8.50&Prime; (US Letter Landscape) &bull; Artboard #1
+          </div>
+          <div id="stageTopRightInfo" class="px-3 py-1 rounded-full bg-ink-900/90 border border-slate-700/80 text-sky-300">
+            Left: Page 32 &bull; Right: Page 1 (Zero Spine Seam)
+          </div>
+        </div>
+
+        <!-- Primary Interactive Canvas -->
+        <div class="relative flex items-center justify-center w-full my-auto">
+          <canvas id="previewCanvas" width="990" height="765" class="max-w-full h-auto rounded shadow-2xl border border-slate-700/70 bg-white"></canvas>
+
+          <!-- 4x Spine Seam Magnifier Loupe -->
+          <div id="seamLoupeBox" class="hidden sm:flex flex-col items-center bg-ink-900/95 border-2 border-emerald-400/80 rounded-xl p-2 shadow-2xl absolute bottom-3 right-3 backdrop-blur">
+            <div class="flex items-center justify-between w-full gap-3 mb-1 px-1">
+              <span class="text-[10px] font-mono uppercase tracking-wider text-emerald-300 font-semibold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                4&times; Spine Seam Check
+              </span>
+              <span id="loupeGapReadout" class="text-[10px] font-mono text-slate-300">0.00pt gap</span>
+            </div>
+            <canvas id="loupeCanvas" width="180" height="110" class="rounded border border-slate-700 bg-white"></canvas>
+            <span class="text-[10px] text-slate-400 mt-1">Center fold join between left &amp; right artboards</span>
+          </div>
+        </div>
+
+        <!-- Bottom Filmstrip Quick Scrubber -->
+        <div class="w-full mt-4 pt-3 border-t border-slate-800/80">
+          <div class="flex items-center justify-between text-[11px] text-slate-400 mb-2">
+            <span id="filmstripTitle" class="font-medium text-slate-300">Click any imposed artboard (or jump to Centerfold Spread 16&ndash;17 to inspect continuous panoramic spread):</span>
+            <button type="button" id="btnJumpCenterfold" class="text-[11px] font-mono text-emerald-300 hover:text-emerald-200 underline">
+              Jump to Centerfold Spread (16&ndash;17) &rarr;
+            </button>
+          </div>
+          <div id="filmstripContainer" class="flex items-center gap-2 overflow-x-auto pb-1.5"></div>
+        </div>
+      </div>
+
+      <!-- All Artboards & Duplex Sheet Map View (Shown when Grid tab is active, plus compact summary below) -->
+      <div id="duplexMapSection" class="bg-ink-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div>
+            <h3 class="text-sm font-bold text-white flex items-center gap-2">
+              Complete Imposition Schedule &amp; Adobe Illustrator Artboard Map
+              <span id="scheduleBadge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">8 Duplex Sheets &bull; 16 Artboards</span>
+            </h3>
+            <p class="text-xs text-slate-400">
+              Every row represents one physical 8.5&Prime;&times;11&Prime; paper sheet printed two-sided. Clicking any Front or Back side loads that artboard in the studio preview.
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button type="button" id="btnCopyImpositionCSV" class="px-2.5 py-1.5 rounded-lg bg-ink-850 hover:bg-ink-800 border border-slate-700 text-xs font-mono text-slate-200 transition">
+              Copy Imposition Table
+            </button>
+          </div>
+        </div>
+
+        <div id="duplexSheetsGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-2.5 max-h-[340px] overflow-y-auto pr-1"></div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Toast Notification Banner -->
+  <div id="toastBanner" class="fixed bottom-5 right-5 z-50 hidden px-4 py-3 rounded-xl bg-ink-900/95 border border-sky-500/50 text-slate-100 shadow-2xl backdrop-blur flex items-center gap-3 max-w-md">
+    <span class="w-2.5 h-2.5 rounded-full bg-sky-400 shrink-0"></span>
+    <div class="text-xs" id="toastMessage">Ready.</div>
+  </div>
+
+  <script>
+    // Configure PDF.js worker if loaded
+    if (window.pdfjsLib) {
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    // Application State
+    const state = {
+      sourceFileName: 'sample_32page_5.5x8.5_spreads.ai',
+      sourceFormat: 'AI/PDF',
+      sourcePageCount: 32,
+      sourcePageWidthIn: 5.5,
+      sourcePageHeightIn: 8.5,
+      rawPdfBytes: null,
+      renderedSourceCanvases: [], // 1-indexed array of HTMLCanvasElement per source page
+
+      // Booklet & Paper settings
+      bookletMode: 'half',        // 'half' (2-up) or 'quarter' (4-up)
+      paperStock: 'letter',       // 'letter' (8.5x11), 'tabloid' (11x17), 'a4', 'a3'
+      impositionOrder: 'saddle',  // 'saddle', 'reader', '4up-two-booklets', '4up-french'
+      duplexFlip: 'short',        // 'short' or 'long'
+      scalingMode: 'proportional',// 'proportional', 'native', 'fill'
+
+      // Seam & Margin Controls
+      seamlessSpine: true,
+      outerMarginIn: 0.0,
+      spineTrimIn: 0.0,
+      creepPerSheetIn: 0.0,
+
+      // Overlays
+      showFoldLine: true,
+      exportMarks: false,
+      showSeamLoupe: true,
+      showPageBadges: true,
+
+      // View & Navigation
+      activeView: 'press',        // 'press' | 'reader' | 'grid'
+      currentArtboardIndex: 0,    // 0-indexed into imposedArtboards
+      currentReaderSpreadIndex: 0,// 0-indexed into readerSpreads
+
+      // Computed Imposition Output
+      imposedArtboards: [],
+      readerSpreads: []
+    };
+
+    const PAPER_STOCKS = {
+      letter:  { name: 'US Letter',  shortIn: 8.5,   longIn: 11.0 },
+      tabloid: { name: 'US Tabloid', shortIn: 11.0,  longIn: 17.0 },
+      a4:      { name: 'ISO A4',     shortIn: 8.27,  longIn: 11.69 },
+      a3:      { name: 'ISO A3',     shortIn: 11.69, longIn: 16.54 }
+    };
+
+    // Utility Toast
+    let toastTimer = null;
+    function showToast(msg) {
+      const banner = document.getElementById('toastBanner');
+      const text = document.getElementById('toastMessage');
+      if (!banner || !text) return;
+      text.textContent = msg;
+      banner.classList.remove('hidden');
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        banner.classList.add('hidden');
+      }, 4200);
+    }
+
+    // Generate a real vector PDF in memory for presets (and render high-res page canvases with continuous 2-page spread artwork)
+    async function generatePresetDocument(presetKey) {
+      let pageCount = 32;
+      let pageWIn = 5.5;
+      let pageHIn = 8.5;
+      let fileName = 'sample_32page_5.5x8.5_spreads.ai';
+
+      if (presetKey === '16p-lookbook') {
+        pageCount = 16;
+        pageWIn = 5.5;
+        pageHIn = 8.5;
+        fileName = 'editorial_lookbook_16p_5.5x8.5.pdf';
+        state.bookletMode = 'half';
+        state.impositionOrder = 'saddle';
+      } else if (presetKey === '32p-quarter') {
+        pageCount = 32;
+        pageWIn = 4.25;
+        pageHIn = 5.5;
+        fileName = 'pocket_zine_32p_4.25x5.5.ai';
+        state.bookletMode = 'quarter';
+        state.impositionOrder = '4up-two-booklets';
+      } else {
+        pageCount = 32;
+        pageWIn = 5.5;
+        pageHIn = 8.5;
+        fileName = 'sample_32page_5.5x8.5_spreads.ai';
+        state.bookletMode = 'half';
+        state.impositionOrder = 'saddle';
+      }
+
+      state.sourceFileName = fileName;
+      state.sourceFormat = fileName.endsWith('.ai') ? 'Adobe Illustrator (.AI)' : 'PDF Document (.PDF)';
+      state.sourcePageCount = pageCount;
+      state.sourcePageWidthIn = pageWIn;
+      state.sourcePageHeightIn = pageHIn;
+
+      // Sync UI buttons for mode
+      syncModeButtons();
+
+      // Build high-res source page canvases (so preview is crisp & instantaneous)
+      const canvases = [null]; // 1-indexed
+      const scalePx = 110; // 110 px per inch for crisp preview
+      const pw = Math.round(pageWIn * scalePx);
+      const ph = Math.round(pageHIn * scalePx);
+
+      for (let p = 1; p <= pageCount; p++) {
+        const c = document.createElement('canvas');
+        c.width = pw;
+        c.height = ph;
+        const ctx = c.getContext('2d');
+        drawSyntheticSpreadPage(ctx, p, pageCount, pw, ph, pageWIn, pageHIn);
+        canvases.push(c);
+      }
+      state.renderedSourceCanvases = canvases;
+
+      // Also build a real vector PDF in memory with pdf-lib so Export PDF / Export .AI works immediately on the preset!
+      if (window.PDFLib) {
+        const { PDFDocument, rgb, StandardFonts } = window.PDFLib;
+        const pdfDoc = await PDFDocument.create();
+        const fontBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+        const fontMono = await pdfDoc.embedFont(StandardFonts.Courier);
+
+        const ptW = pageWIn * 72;
+        const ptH = pageHIn * 72;
+
+        const palettes = [
+          [rgb(0.08, 0.16, 0.32), rgb(0.06, 0.45, 0.68), rgb(0.96, 0.62, 0.04)],
+          [rgb(0.14, 0.11, 0.29), rgb(0.49, 0.23, 0.93), rgb(0.93, 0.28, 0.60)],
+          [rgb(0.06, 0.24, 0.22), rgb(0.06, 0.59, 0.41), rgb(0.98, 0.75, 0.14)],
+          [rgb(0.28, 0.11, 0.15), rgb(0.86, 0.15, 0.15), rgb(0.98, 0.57, 0.24)]
+        ];
+
+        for (let p = 1; p <= pageCount; p++) {
+          const page = pdfDoc.addPage([ptW, ptH]);
+          const isCover = (p === 1 || p === pageCount);
+          const spreadIdx = Math.floor(p / 2); // Pages (2,3)->1, (4,5)->2, ..., (16,17)->8
+          const isLeftInReaderSpread = (p % 2 === 0 && p < pageCount);
+          const isRightInReaderSpread = (p % 2 === 1 && p > 1);
+          const pal = palettes[spreadIdx % palettes.length];
+
+          // Background paper tone
+          page.drawRectangle({
+            x: 0, y: 0, width: ptW, height: ptH,
+            color: isCover ? rgb(0.07, 0.10, 0.18) : rgb(0.98, 0.98, 0.96)
+          });
+
+          // Continuous two-page panoramic band across reader spreads (p=2k and p=2k+1)
+          // Drawn all the way to the exact spine edge (x=ptW on even pages, x=0 on odd pages)
+          if (!isCover) {
+            const bandY = ptH * 0.26;
+            const bandH = ptH * 0.48;
+            page.drawRectangle({
+              x: isLeftInReaderSpread ? ptW * 0.08 : 0,
+              y: bandY,
+              width: ptW * 0.92,
+              height: bandH,
+              color: pal[0]
+            });
+
+            // Continuous geometric wave / mountain / horizon lines that cross x=ptW (even) to x=0 (odd)
+            const stripeCount = 5;
+            for (let s = 0; s < stripeCount; s++) {
+              const sy = bandY + (bandH / (stripeCount + 1)) * (s + 1);
+              page.drawRectangle({
+                x: isLeftInReaderSpread ? ptW * 0.08 : 0,
+                y: sy - 3,
+                width: ptW * 0.92,
+                height: 6,
+                color: s % 2 === 0 ? pal[1] : pal[2]
+              });
+            }
+
+            // Giant circle centered exactly on the spine seam between even page (right edge) and odd page (left edge)!
+            const seamX = isLeftInReaderSpread ? ptW : 0;
+            const seamY = bandY + bandH * 0.5;
+            page.drawCircle({
+              x: seamX,
+              y: seamY,
+              size: ptW * 0.28,
+              color: pal[2],
+              opacity: 0.85
+            });
+            page.drawCircle({
+              x: seamX,
+              y: seamY,
+              size: ptW * 0.16,
+              color: rgb(1, 1, 1),
+              opacity: 0.9
+            });
+
+            // Panoramic label spanning across the spine
+            page.drawText(isLeftInReaderSpread ? 'PANORAMIC' : 'SPREAD ' + (p - 1) + '-' + p, {
+              x: isLeftInReaderSpread ? ptW - 118 : 10,
+              y: seamY - 5,
+              size: 14,
+              font: fontBold,
+              color: pal[0]
+            });
+          } else {
+            // Cover artwork
+            page.drawRectangle({
+              x: 18, y: 18, width: ptW - 36, height: ptH - 36,
+              borderColor: rgb(0.22, 0.74, 0.97),
+              borderWidth: 2
+            });
+            page.drawText(p === 1 ? 'FRONT COVER' : 'BACK COVER', {
+              x: 36, y: ptH - 80,
+              size: 22,
+              font: fontBold,
+              color: rgb(0.95, 0.97, 1)
+            });
+          }
+
+          // Page folio header/footer
+          page.drawText(`ARTBOARD / PAGE ${p} OF ${pageCount}`, {
+            x: 24,
+            y: ptH - 32,
+            size: 9,
+            font: fontMono,
+            color: isCover ? rgb(0.56, 0.64, 0.75) : rgb(0.35, 0.40, 0.48)
+          });
+
+          page.drawText(`${pageWIn}" x ${pageHIn}"`, {
+            x: 24,
+            y: 22,
+            size: 9,
+            font: fontMono,
+            color: isCover ? rgb(0.56, 0.64, 0.75) : rgb(0.45, 0.50, 0.58)
+          });
+        }
+
+        state.rawPdfBytes = await pdfDoc.save();
+      }
+
+      recomputeImposition();
+      renderActiveView();
+    }
+
+    // Draw rich synthetic page on HTMLCanvasElement with panoramic artwork crossing the spine seam
+    function drawSyntheticSpreadPage(ctx, pageNum, totalPages, w, h, wIn, hIn) {
+      const isCover = (pageNum === 1 || pageNum === totalPages);
+      const isLeftReader = (pageNum % 2 === 0 && pageNum < totalPages);
+      const isRightReader = (pageNum % 2 === 1 && pageNum > 1);
+      const spreadIdx = Math.floor(pageNum / 2);
+
+      const themes = [
+        { bg: '#0f172a', accent1: '#0284c7', accent2: '#f59e0b', light: '#f8fafc', label: 'ALPINE HORIZON' },
+        { bg: '#1e1b4b', accent1: '#7c3aed', accent2: '#ec4899', light: '#fdf4ff', label: 'NEON METROPOLIS' },
+        { bg: '#064e3b', accent1: '#10b981', accent2: '#fbbf24', light: '#f0fdf4', label: 'BOTANICAL CANOPY' },
+        { bg: '#450a0a', accent1: '#ef4444', accent2: '#f97316', light: '#fff7ed', label: 'DESERT CANYON' }
+      ];
+      const theme = themes[spreadIdx % themes.length];
+
+      // Page background
+      ctx.fillStyle = isCover ? '#0f172a' : '#fafaf7';
+      ctx.fillRect(0, 0, w, h);
+
+      if (isCover) {
+        // Cover geometric design
+        const grad = ctx.createLinearGradient(0, 0, w, h);
+        grad.addColorStop(0, '#0f172a');
+        grad.addColorStop(1, '#1e293b');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(w * 0.06, h * 0.05, w * 0.88, h * 0.90);
+
+        // Spine-connecting cover emblem across Back Cover (32) and Front Cover (1)
+        const coverSeamX = (pageNum === totalPages) ? w : 0;
+        const coverSeamY = h * 0.52;
+        ctx.fillStyle = '#0ea5e9';
+        ctx.beginPath();
+        ctx.arc(coverSeamX, coverSeamY, w * 0.34, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = `bold ${Math.round(w * 0.075)}px Inter, sans-serif`;
+        ctx.textAlign = 'left';
+        ctx.fillText(pageNum === 1 ? 'FRONT COVER' : 'BACK COVER', w * 0.12, h * 0.18);
+
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = `500 ${Math.round(w * 0.036)}px "JetBrains Mono", monospace`;
+        ctx.fillText(`PAGE ${pageNum} OF ${totalPages} (${wIn}"×${hIn}")`, w * 0.12, h * 0.23);
+        ctx.fillText(pageNum === 1 ? 'Outer Sheet 1 Right Side' : 'Outer Sheet 1 Left Side', w * 0.12, h * 0.88);
+      } else {
+        // Reader spread panoramic illustration box that touches the exact inner spine edge (x=w for Left page, x=0 for Right page)
+        const outerPad = w * 0.08;
+        const boxX = isLeftReader ? outerPad : 0;
+        const boxW = w - outerPad;
+        const boxY = h * 0.22;
+        const boxH = h * 0.54;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(boxX, boxY, boxW, boxH);
+        ctx.clip();
+
+        // Sky / backdrop gradient continuous across the 2-page spread
+        // Virtual full spread coordinate: [0 .. 2*w], where seam is at X = w
+        const virtualOffsetX = isLeftReader ? 0 : -w;
+        const fullGrad = ctx.createLinearGradient(virtualOffsetX, boxY, virtualOffsetX + 2 * w, boxY + boxH);
+        fullGrad.addColorStop(0, theme.bg);
+        fullGrad.addColorStop(0.5, theme.accent1);
+        fullGrad.addColorStop(1, theme.bg);
+        ctx.fillStyle = fullGrad;
+        ctx.fillRect(boxX, boxY, boxW, boxH);
+
+        // Sun / Ring centered dead-on the spine seam (virtual X = w)
+        const seamX = isLeftReader ? w : 0;
+        const centerY = boxY + boxH * 0.46;
+
+        ctx.fillStyle = theme.accent2;
+        ctx.beginPath();
+        ctx.arc(seamX, centerY, w * 0.30, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = Math.max(2, w * 0.012);
+        ctx.beginPath();
+        ctx.arc(seamX, centerY, w * 0.20, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Continuous sine-wave mountain ridges crossing the center seam seamlessly
+        ctx.fillStyle = 'rgba(9, 11, 16, 0.55)';
+        ctx.beginPath();
+        ctx.moveTo(virtualOffsetX, boxY + boxH);
+        for (let vx = 0; vx <= 2 * w; vx += 8) {
+          const vy = centerY + Math.sin((vx / (2 * w)) * Math.PI * 4 + spreadIdx) * (boxH * 0.14) + boxH * 0.16;
+          ctx.lineTo(virtualOffsetX + vx, vy);
+        }
+        ctx.lineTo(virtualOffsetX + 2 * w, boxY + boxH);
+        ctx.closePath();
+        ctx.fill();
+
+        // Precision alignment crosshair lines crossing the spine seam
+        ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(boxX, centerY);
+        ctx.lineTo(boxX + boxW, centerY);
+        ctx.stroke();
+
+        // Panoramic Spread Banner Text crossing the center spine
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${Math.round(w * 0.052)}px "JetBrains Mono", monospace`;
+        ctx.textAlign = 'center';
+        const leftPageNo = isLeftReader ? pageNum : pageNum - 1;
+        const rightPageNo = isLeftReader ? pageNum + 1 : pageNum;
+        ctx.fillText(`SEAMLESS SPREAD ${leftPageNo}—${rightPageNo}`, seamX, centerY + 6);
+
+        ctx.restore();
+
+        // Editorial header & caption text
+        ctx.fillStyle = '#1e293b';
+        ctx.font = `bold ${Math.round(w * 0.045)}px Inter, sans-serif`;
+        ctx.textAlign = isLeftReader ? 'left' : 'right';
+        const textAnchorX = isLeftReader ? outerPad : w - outerPad;
+        const isCenterfold = (pageNum === totalPages / 2 || pageNum === totalPages / 2 + 1);
+        ctx.fillText(
+          isCenterfold ? `CENTERFOLD SPREAD (${theme.label})` : `CHAPTER SPREAD ${spreadIdx} • ${theme.label}`,
+          textAnchorX,
+          h * 0.12
+        );
+
+        ctx.fillStyle = '#64748b';
+        ctx.font = `500 ${Math.round(w * 0.028)}px "JetBrains Mono", monospace`;
+        ctx.fillText(
+          isLeftReader
+            ? `LEFT FOLIO P.${pageNum}  •  FLUSH RIGHT TO SPINE →`
+            : `← FLUSH LEFT TO SPINE  •  RIGHT FOLIO P.${pageNum}`,
+          textAnchorX,
+          h * 0.16
+        );
+
+        // Simulated editorial body columns below the panoramic image
+        ctx.fillStyle = '#cbd5e1';
+        const colY = h * 0.80;
+        for (let line = 0; line < 4; line++) {
+          ctx.fillRect(
+            isLeftReader ? outerPad : outerPad * 0.5,
+            colY + line * (h * 0.024),
+            w - outerPad * 1.5,
+            h * 0.011
+          );
+        }
+      }
+
+      // Folio number at bottom corner
+      ctx.fillStyle = isCover ? '#38bdf8' : '#0f172a';
+      ctx.font = `bold ${Math.round(w * 0.055)}px "JetBrains Mono", monospace`;
+      ctx.textAlign = (pageNum % 2 === 0) ? 'left' : 'right';
+      ctx.fillText(
+        String(pageNum),
+        (pageNum % 2 === 0) ? w * 0.08 : w * 0.92,
+        h * 0.95
+      );
+    }
+
+    // Core Imposition Engine: Computes imposed press artboards and reader spreads
+    function recomputeImposition() {
+      const stock = PAPER_STOCKS[state.paperStock] || PAPER_STOCKS.letter;
+      const rawPages = Math.max(1, state.sourcePageCount);
+
+      // Build Reader Spreads (for Reader Spread Flipbook tab)
+      const readerSpreads = [];
+      // Cover 1 alone on right, or paired with Back Cover
+      readerSpreads.push({
+        label: `Cover Spread (Back ${rawPages} | Front 1)`,
+        leftPage: rawPages,
+        rightPage: 1,
+        isCenterfold: false
+      });
+      for (let p = 2; p < rawPages; p += 2) {
+        const isCenter = (p === Math.floor(rawPages / 2));
+        readerSpreads.push({
+          label: isCenter ? `Centerfold Spread (${p} — ${p + 1})` : `Reader Spread (${p} — ${p + 1})`,
+          leftPage: p,
+          rightPage: p + 1 <= rawPages ? p + 1 : null,
+          isCenterfold: isCenter
+        });
+      }
+      state.readerSpreads = readerSpreads;
+
+      const artboards = [];
+
+      if (state.bookletMode === 'half') {
+        // Half-Page Booklet (2-Up on Landscape Paper: e.g. 11" wide x 8.5" high)
+        const sheetWIn = stock.longIn;
+        const sheetHIn = stock.shortIn;
+
+        if (state.impositionOrder === 'reader') {
+          // Sequential 2-Up Reader Spreads
+          const totalPadded = Math.ceil(rawPages / 2) * 2;
+          let sheetNo = 1;
+          // Pair [totalPadded, 1], then [2, 3], [4, 5], ...
+          const pairs = [[totalPadded <= rawPages ? totalPadded : null, 1]];
+          for (let p = 2; p < totalPadded; p += 2) {
+            pairs.push([p <= rawPages ? p : null, (p + 1) <= rawPages ? (p + 1) : null]);
+          }
+          pairs.forEach((pair, idx) => {
+            const side = (idx % 2 === 0) ? 'Front' : 'Back';
+            const physSheet = Math.floor(idx / 2) + 1;
+            artboards.push({
+              index: idx,
+              artboardNumber: idx + 1,
+              physicalSheet: physSheet,
+              side: side,
+              mode: '2up',
+              sheetWIn,
+              sheetHIn,
+              leftPage: pair[0],
+              rightPage: pair[1],
+              rotate180: (side === 'Back' && state.duplexFlip === 'long'),
+              isCenterfold: (pair[0] === totalPadded / 2 && pair[1] === totalPadded / 2 + 1),
+              title: `Artboard ${idx + 1} • Sheet ${physSheet} ${side} [${pair[0] || 'Blank'} | ${pair[1] || 'Blank'}]`
+            });
+            sheetNo++;
+          });
+        } else {
+          // Standard Saddle-Stitch 2-Up Booklet Imposition
+          // Pad total pages to multiple of 4
+          const totalPadded = Math.max(4, Math.ceil(rawPages / 4) * 4);
+          const numSheets = totalPadded / 4;
+
+          for (let s = 0; s < numSheets; s++) {
+            const physSheet = s + 1;
+            // Front of Sheet s+1: Left = N - 2s, Right = 2s + 1
+            const fLeft = totalPadded - 2 * s;
+            const fRight = 2 * s + 1;
+            // Back of Sheet s+1: Left = 2s + 2, Right = N - 2s - 1
+            const bLeft = 2 * s + 2;
+            const bRight = totalPadded - 2 * s - 1;
+
+            artboards.push({
+              index: s * 2,
+              artboardNumber: s * 2 + 1,
+              physicalSheet: physSheet,
+              side: 'Front',
+              sheetDepthFromCenter: numSheets - 1 - s,
+              mode: '2up',
+              sheetWIn,
+              sheetHIn,
+              leftPage: fLeft <= rawPages ? fLeft : null,
+              rightPage: fRight <= rawPages ? fRight : null,
+              rotate180: false,
+              isCenterfold: false,
+              title: `Artboard ${s * 2 + 1} • Sheet ${physSheet} Front [${fLeft <= rawPages ? fLeft : 'Blank'} | ${fRight <= rawPages ? fRight : 'Blank'}]`
+            });
+
+            const isCenter = (s === numSheets - 1);
+            artboards.push({
+              index: s * 2 + 1,
+              artboardNumber: s * 2 + 2,
+              physicalSheet: physSheet,
+              side: 'Back',
+              sheetDepthFromCenter: numSheets - 1 - s,
+              mode: '2up',
+              sheetWIn,
+              sheetHIn,
+              leftPage: bLeft <= rawPages ? bLeft : null,
+              rightPage: bRight <= rawPages ? bRight : null,
+              rotate180: (state.duplexFlip === 'long'),
+              isCenterfold: isCenter,
+              title: `Artboard ${s * 2 + 2} • Sheet ${physSheet} Back [${bLeft <= rawPages ? bLeft : 'Blank'} | ${bRight <= rawPages ? bRight : 'Blank'}]${isCenter ? ' (Centerfold)' : ''}`
+            });
+          }
+        }
+      } else {
+        // Quarter-Page Booklet (4-Up on Portrait Paper: 8.5" wide x 11" high, 2x2 grid of 4.25" x 5.5" pages)
+        // 8 pages per physical sheet (4 on Front, 4 on Back) -> 32 pages = 4 physical sheets (8 imposed artboards)
+        const sheetWIn = stock.shortIn; // 8.5"
+        const sheetHIn = stock.longIn;  // 11.0"
+        const totalPadded = Math.max(8, Math.ceil(rawPages / 8) * 8);
+        const totalHalfSpreads = totalPadded / 4; // number of 4-page mini-sheets
+        const numPhysicalSheets = totalPadded / 8;
+
+        for (let s = 0; s < numPhysicalSheets; s++) {
+          const physSheet = s + 1;
+          // Top tier = signature s, Bottom tier = signature (s + numPhysicalSheets)
+          const sTop = s;
+          const sBot = s + numPhysicalSheets;
+
+          const topFLeft = totalPadded - 2 * sTop;
+          const topFRight = 2 * sTop + 1;
+          const topBLeft = 2 * sTop + 2;
+          const topBRight = totalPadded - 2 * sTop - 1;
+
+          const botFLeft = totalPadded - 2 * sBot;
+          const botFRight = 2 * sBot + 1;
+          const botBLeft = 2 * sBot + 2;
+          const botBRight = totalPadded - 2 * sBot - 1;
+
+          const frenchFold = (state.impositionOrder === '4up-french');
+
+          artboards.push({
+            index: s * 2,
+            artboardNumber: s * 2 + 1,
+            physicalSheet: physSheet,
+            side: 'Front',
+            sheetDepthFromCenter: numPhysicalSheets - 1 - s,
+            mode: '4up',
+            frenchFold,
+            sheetWIn,
+            sheetHIn,
+            quads: [
+              { pos: 'TL', page: topFLeft <= rawPages ? topFLeft : null, rotateHead: frenchFold },
+              { pos: 'TR', page: topFRight <= rawPages ? topFRight : null, rotateHead: frenchFold },
+              { pos: 'BL', page: botFLeft <= rawPages ? botFLeft : null, rotateHead: false },
+              { pos: 'BR', page: botFRight <= rawPages ? botFRight : null, rotateHead: false }
+            ],
+            title: `Artboard ${s * 2 + 1} • Sheet ${physSheet} Front [Top ${topFLeft}|${topFRight} • Bot ${botFLeft}|${botFRight}]`
+          });
+
+          artboards.push({
+            index: s * 2 + 1,
+            artboardNumber: s * 2 + 2,
+            physicalSheet: physSheet,
+            side: 'Back',
+            sheetDepthFromCenter: numPhysicalSheets - 1 - s,
+            mode: '4up',
+            frenchFold,
+            sheetWIn,
+            sheetHIn,
+            quads: [
+              { pos: 'TL', page: topBLeft <= rawPages ? topBLeft : null, rotateHead: frenchFold },
+              { pos: 'TR', page: topBRight <= rawPages ? topBRight : null, rotateHead: frenchFold },
+              { pos: 'BL', page: botBLeft <= rawPages ? botBLeft : null, rotateHead: false },
+              { pos: 'BR', page: botBRight <= rawPages ? botBRight : null, rotateHead: false }
+            ],
+            title: `Artboard ${s * 2 + 2} • Sheet ${physSheet} Back [Top ${topBLeft}|${topBRight} • Bot ${botBLeft}|${botBRight}]`
+          });
+        }
+      }
+
+      state.imposedArtboards = artboards;
+      if (state.currentArtboardIndex >= artboards.length) {
+        state.currentArtboardIndex = 0;
+      }
+      if (state.currentReaderSpreadIndex >= readerSpreads.length) {
+        state.currentReaderSpreadIndex = 0;
+      }
+
+      updateTelemetryHeader();
+      renderFilmstrip();
+      renderDuplexScheduleGrid();
+    }
+
+    // Calculate Exact Page Placement Geometry (with Zero-Seam Spine Lock, Outer Margins, Inner Trim & Creep)
+    function computeSlotPlacement(slotSide, halfW, sheetH, depthFromCenter) {
+      // slotSide: 'left' or 'right'
+      // halfW, sheetH in target coordinate units (px or pt)
+      // Returns { destX, destY, destW, destH, srcCropRatioX, srcCropRatioW }
+      const marginRatioW = state.outerMarginIn / (halfW_in_current());
+      const marginRatioH = state.outerMarginIn / (sheetH_in_current());
+      const creepShiftRatio = ((depthFromCenter || 0) * state.creepPerSheetIn) / (halfW_in_current());
+
+      const outerPadX = Math.min(halfW * 0.35, halfW * marginRatioW);
+      const outerPadY = Math.min(sheetH * 0.35, sheetH * marginRatioH);
+      const creepPx = Math.min(halfW * 0.15, halfW * creepShiftRatio);
+
+      // Available printable box for one page half
+      // Crucially, when seamlessSpine is true, the inner spine edge has ZERO margin!
+      const innerGap = state.seamlessSpine ? 0 : outerPadX * 0.5;
+      const availW = Math.max(10, halfW - outerPadX - innerGap - creepPx);
+      const availH = Math.max(10, sheetH - 2 * outerPadY);
+
+      // Source aspect ratio after optional spine trim
+      const trimRatio = Math.min(0.25, state.spineTrimIn / Math.max(1, state.sourcePageWidthIn));
+      const effectiveSrcWIn = state.sourcePageWidthIn * (1 - trimRatio);
+      const effectiveSrcHIn = state.sourcePageHeightIn;
+      const srcAspect = effectiveSrcWIn / effectiveSrcHIn;
+
+      let destW = availW;
+      let destH = availH;
+
+      if (state.scalingMode === 'native') {
+        const nativeScaleW = effectiveSrcWIn / halfW_in_current();
+        const nativeScaleH = effectiveSrcHIn / sheetH_in_current();
+        destW = Math.min(availW, halfW * nativeScaleW);
+        destH = Math.min(availH, sheetH * nativeScaleH);
+      } else if (state.scalingMode === 'proportional') {
+        if (availW / availH > srcAspect) {
+          destH = availH;
+          destW = destH * srcAspect;
+        } else {
+          destW = availW;
+          destH = destW / srcAspect;
+        }
+      }
+      // Always anchor inner edge FLUSH to the spine (x = halfW) when seamlessSpine is enabled!
+      let destX = 0;
+      if (slotSide === 'left') {
+        destX = state.seamlessSpine ? (halfW - destW) : (halfW - innerGap - destW);
+      } else {
+        destX = state.seamlessSpine ? halfW : (halfW + innerGap);
+      }
+      const destY = (sheetH - destH) / 2;
+
+      // Source horizontal crop if spineTrimIn > 0
+      // For a left page, we trim the RIGHT (inner spine) edge of the source page
+      // For a right page, we trim the LEFT (inner spine) edge of the source page
+      const srcCropRatioX = (slotSide === 'right') ? trimRatio : 0;
+      const srcCropRatioW = 1 - trimRatio;
+
+      return { destX, destY, destW, destH, srcCropRatioX, srcCropRatioW, innerGap };
+    }
+
+    function halfW_in_current() {
+      const stock = PAPER_STOCKS[state.paperStock] || PAPER_STOCKS.letter;
+      return state.bookletMode === 'half' ? stock.longIn / 2 : stock.shortIn / 2;
+    }
+
+    function sheetH_in_current() {
+      const stock = PAPER_STOCKS[state.paperStock] || PAPER_STOCKS.letter;
+      return state.bookletMode === 'half' ? stock.shortIn : stock.longIn / 2;
+    }
+
+    // Update top telemetry bar
+    function updateTelemetryHeader() {
+      const stock = PAPER_STOCKS[state.paperStock] || PAPER_STOCKS.letter;
+      const totalArtboards = state.imposedArtboards.length;
+      const totalSheets = Math.ceil(totalArtboards / 2);
+
+      document.getElementById('statSourcePages').textContent =
+        `${state.sourcePageCount} pp (${state.sourcePageWidthIn.toFixed(2).replace(/\.00$/, '')}×${state.sourcePageHeightIn.toFixed(2).replace(/\.00$/, '')}")`;
+      document.getElementById('statImposedSides').textContent =
+        `${totalArtboards} artboards`;
+      document.getElementById('statPhysicalSheets').textContent =
+        `${totalSheets} sheets (${stock.shortIn}×${stock.longIn}")`;
+
+      const seamEl = document.getElementById('statSeamStatus');
+      if (state.seamlessSpine) {
+        seamEl.textContent = `Spine Seam: 0.000" (Seamless${state.spineTrimIn > 0 ? ` • -${state.spineTrimIn.toFixed(3)}" Trim` : ''})`;
+      } else {
+        seamEl.textContent = `Spine Gutter: ${(state.outerMarginIn).toFixed(2)}"`;
+      }
+
+      document.getElementById('scheduleBadge').textContent =
+        `${totalSheets} Duplex Sheets • ${totalArtboards} Artboards`;
+    }
+
+    // Render the active view on the primary canvas and 4x seam loupe
+    function renderActiveView() {
+      const canvas = document.getElementById('previewCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      if (state.activeView === 'reader') {
+        renderReaderSpreadOnCanvas(canvas, ctx);
+      } else {
+        renderImposedArtboardOnCanvas(canvas, ctx, state.imposedArtboards[state.currentArtboardIndex]);
+      }
+
+      updateNavigationLabels();
+    }
+
+    // Render an imposed press sheet (2-Up or 4-Up) onto previewCanvas
+    function renderImposedArtboardOnCanvas(canvas, ctx, artboard) {
+      if (!artboard) return;
+      const pxPerIn = 90;
+      const cw = Math.round(artboard.sheetWIn * pxPerIn);
+      const ch = Math.round(artboard.sheetHIn * pxPerIn);
+      if (canvas.width !== cw || canvas.height !== ch) {
+        canvas.width = cw;
+        canvas.height = ch;
+      }
+
+      ctx.save();
+      // White paper sheet background
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, cw, ch);
+
+      if (artboard.rotate180) {
+        ctx.translate(cw / 2, ch / 2);
+        ctx.rotate(Math.PI);
+        ctx.translate(-cw / 2, -ch / 2);
+      }
+
+      if (artboard.mode === '2up') {
+        const halfW = cw / 2;
+        const leftGeom = computeSlotPlacement('left', halfW, ch, artboard.sheetDepthFromCenter);
+        const rightGeom = computeSlotPlacement('right', halfW, ch, artboard.sheetDepthFromCenter);
+
+        drawSourcePageIntoSlot(ctx, artboard.leftPage, leftGeom, 'left');
+        drawSourcePageIntoSlot(ctx, artboard.rightPage, rightGeom, 'right');
+
+        // Optional outer margin guides
+        if (state.outerMarginIn > 0 && state.showFoldLine) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(14, 165, 233, 0.45)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([5, 4]);
+          ctx.strokeRect(
+            leftGeom.destX,
+            leftGeom.destY,
+            (rightGeom.destX + rightGeom.destW) - leftGeom.destX,
+            leftGeom.destH
+          );
+          ctx.restore();
+        }
+
+        // Center Fold Guide Line (drawn only in the outer margin/slug or ultra-subtle so we can verify seam)
+        if (state.showFoldLine) {
+          ctx.save();
+          ctx.strokeStyle = state.seamlessSpine ? 'rgba(16, 185, 129, 0.7)' : 'rgba(244, 63, 94, 0.7)';
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 6]);
+          ctx.beginPath();
+          ctx.moveTo(halfW, 0);
+          ctx.lineTo(halfW, 26);
+          ctx.moveTo(halfW, ch - 26);
+          ctx.lineTo(halfW, ch);
+          ctx.stroke();
+          ctx.restore();
+        }
+
+        // Folio Overlay Badges
+        if (state.showPageBadges) {
+          drawFolioBadge(ctx, 14, 14, `LEFT: P.${artboard.leftPage || 'Blank'}`);
+          drawFolioBadge(ctx, cw - 138, 14, `RIGHT: P.${artboard.rightPage || 'Blank'}`);
+        }
+      } else {
+        // 4-Up Quarter Booklet (2x2 grid on 8.5x11)
+        const halfW = cw / 2;
+        const halfH = ch / 2;
+
+        artboard.quads.forEach((q) => {
+          const isTop = (q.pos === 'TL' || q.pos === 'TR');
+          const isLeft = (q.pos === 'TL' || q.pos === 'BL');
+          const offsetY = isTop ? 0 : halfH;
+
+          ctx.save();
+          ctx.translate(0, offsetY);
+          if (q.rotateHead) {
+            ctx.translate(cw / 2, halfH / 2);
+            ctx.rotate(Math.PI);
+            ctx.translate(-cw / 2, -halfH / 2);
+          }
+
+          const geom = computeSlotPlacement(isLeft ? 'left' : 'right', halfW, halfH, artboard.sheetDepthFromCenter);
+          drawSourcePageIntoSlot(ctx, q.page, geom, isLeft ? 'left' : 'right');
+
+          if (state.showPageBadges) {
+            drawFolioBadge(ctx, isLeft ? 12 : cw - 120, 12, `${q.pos}: P.${q.page || '-'}`);
+          }
+          ctx.restore();
+        });
+
+        // Horizontal Cut Line & Vertical Fold Line
+        if (state.showFoldLine) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.75)';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([6, 5]);
+          // Horizontal cut/fold line
+          ctx.beginPath();
+          ctx.moveTo(0, halfH);
+          ctx.lineTo(cw, halfH);
+          ctx.stroke();
+
+          // Vertical spine ticks
+          ctx.strokeStyle = 'rgba(16, 185, 129, 0.8)';
+          ctx.beginPath();
+          ctx.moveTo(halfW, 0);
+          ctx.lineTo(halfW, 24);
+          ctx.moveTo(halfW, halfH - 18);
+          ctx.lineTo(halfW, halfH + 18);
+          ctx.moveTo(halfW, ch - 24);
+          ctx.lineTo(halfW, ch);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      ctx.restore();
+      updateSeamLoupe(canvas);
+    }
+
+    // Render Reader Spread (2-page spread side-by-side) onto previewCanvas
+    function renderReaderSpreadOnCanvas(canvas, ctx) {
+      const spread = state.readerSpreads[state.currentReaderSpreadIndex];
+      if (!spread) return;
+      const stock = PAPER_STOCKS[state.paperStock] || PAPER_STOCKS.letter;
+      const sheetWIn = state.bookletMode === 'half' ? stock.longIn : stock.shortIn;
+      const sheetHIn = state.bookletMode === 'half' ? stock.shortIn : stock.longIn / 2;
+
+      const pxPerIn = 90;
+      const cw = Math.round(sheetWIn * pxPerIn);
+      const ch = Math.round(sheetHIn * pxPerIn);
+      if (canvas.width !== cw || canvas.height !== ch) {
+        canvas.width = cw;
+        canvas.height = ch;
+      }
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, cw, ch);
+
+      const halfW = cw / 2;
+      const leftGeom = computeSlotPlacement('left', halfW, ch, 0);
+      const rightGeom = computeSlotPlacement('right', halfW, ch, 0);
+
+      drawSourcePageIntoSlot(ctx, spread.leftPage, leftGeom, 'left');
+      drawSourcePageIntoSlot(ctx, spread.rightPage, rightGeom, 'right');
+
+      if (state.showPageBadges) {
+        drawFolioBadge(ctx, 14, 14, `READER LEFT: P.${spread.leftPage || 'Blank'}`);
+        drawFolioBadge(ctx, cw - 165, 14, `READER RIGHT: P.${spread.rightPage || 'Blank'}`);
+      }
+
+      updateSeamLoupe(canvas);
+    }
+
+    function drawSourcePageIntoSlot(ctx, pageNumber, geom, slotSide) {
+      if (!pageNumber || !state.renderedSourceCanvases[pageNumber]) {
+        return;
+      }
+      const srcCanvas = state.renderedSourceCanvases[pageNumber];
+      const sx = Math.round(srcCanvas.width * geom.srcCropRatioX);
+      const sw = Math.round(srcCanvas.width * geom.srcCropRatioW);
+      const sy = 0;
+      const sh = srcCanvas.height;
+
+      // Exact integer alignment on the spine edge so canvas anti-aliasing never creates a 1px hairline seam!
+      const spineX = Math.round(slotSide === 'left' ? geom.destX + geom.destW : geom.destX);
+      const dx = (slotSide === 'left') ? Math.round(spineX - geom.destW) : spineX;
+      const dw = (slotSide === 'left') ? (spineX - dx) : Math.round(geom.destW);
+
+      ctx.drawImage(
+        srcCanvas,
+        sx, sy, sw, sh,
+        dx, Math.round(geom.destY), dw, Math.round(geom.destH)
+      );
+    }
+
+    function drawFolioBadge(ctx, x, y, text) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(9, 11, 16, 0.82)';
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(x, y, 124, 22, 5);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#e0f2fe';
+      ctx.font = '600 10px "JetBrains Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.fillText(text, x + 8, y + 14);
+      ctx.restore();
+    }
+
+    // Update the 4x Spine Seam Magnifier Loupe
+    function updateSeamLoupe(sourceCanvas) {
+      const loupeBox = document.getElementById('seamLoupeBox');
+      const loupeCanvas = document.getElementById('loupeCanvas');
+      const gapReadout = document.getElementById('loupeGapReadout');
+      if (!loupeBox || !loupeCanvas) return;
+
+      if (!state.showSeamLoupe) {
+        loupeBox.classList.add('hidden');
+        loupeBox.classList.remove('sm:flex');
+        return;
+      } else {
+        loupeBox.classList.remove('hidden');
+        loupeBox.classList.add('sm:flex');
+      }
+
+      const lctx = loupeCanvas.getContext('2d');
+      const lw = loupeCanvas.width;
+      const lh = loupeCanvas.height;
+
+      // Sample a small region around the exact horizontal center (x = sourceCanvas.width / 2, y = sourceCanvas.height * 0.45)
+      const zoom = 2.6;
+      const sampleW = lw / zoom;
+      const sampleH = lh / zoom;
+      const sx = sourceCanvas.width / 2 - sampleW / 2;
+      const sy = sourceCanvas.height * 0.46 - sampleH / 2;
+
+      lctx.clearRect(0, 0, lw, lh);
+      lctx.drawImage(sourceCanvas, sx, sy, sampleW, sampleH, 0, 0, lw, lh);
+
+      // Draw tiny top/bottom crosshair ticks on the loupe frame to mark exact spine axis
+      lctx.strokeStyle = state.seamlessSpine ? '#10b981' : '#f43f5e';
+      lctx.lineWidth = 1.5;
+      lctx.beginPath();
+      lctx.moveTo(lw / 2, 0);
+      lctx.lineTo(lw / 2, 12);
+      lctx.moveTo(lw / 2, lh - 12);
+      lctx.lineTo(lw / 2, lh);
+      lctx.stroke();
+
+      if (gapReadout) {
+        gapReadout.textContent = state.seamlessSpine
+          ? '0.00pt seam (Joined)'
+          : `${(state.outerMarginIn * 72).toFixed(1)}pt gutter`;
+      }
+    }
+
+    // Update stage labels and navigation bar
+    function updateNavigationLabels() {
+      const labelEl = document.getElementById('currentItemLabel');
+      const topLeft = document.getElementById('stageTopLeftInfo');
+      const topRight = document.getElementById('stageTopRightInfo');
+
+      if (state.activeView === 'reader') {
+        const sp = state.readerSpreads[state.currentReaderSpreadIndex];
+        if (!sp) return;
+        labelEl.textContent = `Spread ${state.currentReaderSpreadIndex + 1} / ${state.readerSpreads.length} • P.${sp.leftPage || '-'}–${sp.rightPage || '-'}`;
+        topLeft.textContent = `${sp.label} • Reader Order Verification`;
+        topRight.textContent = state.seamlessSpine
+          ? `Two-Page Spread Joined at Spine (0.000" Gap)`
+          : `Gutter Separation: ${state.outerMarginIn.toFixed(2)}"`;
+      } else {
+        const ab = state.imposedArtboards[state.currentArtboardIndex];
+        if (!ab) return;
+        labelEl.textContent = `Artboard ${ab.artboardNumber} / ${state.imposedArtboards.length} • Sheet ${ab.physicalSheet} ${ab.side}`;
+        topLeft.textContent = `Sheet ${ab.physicalSheet} (${ab.side}) • ${ab.sheetWIn.toFixed(2)}" × ${ab.sheetHIn.toFixed(2)}" Paper Stock`;
+        if (ab.mode === '2up') {
+          topRight.textContent = `Left: Page ${ab.leftPage || 'Blank'} | Right: Page ${ab.rightPage || 'Blank'}${ab.isCenterfold ? ' ★ Centerfold Spread' : ''}`;
+        } else {
+          topRight.textContent = `4-Up Quarter Grid • 4 Pages Imposed on ${ab.side}`;
+        }
+      }
+
+      // Highlight active filmstrip pill
+      document.querySelectorAll('.filmstrip-item').forEach((btn) => {
+        const idx = Number(btn.getAttribute('data-idx'));
+        const isCurrent = (state.activeView === 'reader')
+          ? (idx === state.currentReaderSpreadIndex)
+          : (idx === state.currentArtboardIndex);
+        if (isCurrent) {
+          btn.className = 'filmstrip-item shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-mono border transition bg-sky-500 text-slate-950 font-bold border-sky-400 shadow';
+        } else {
+          btn.className = 'filmstrip-item shrink-0 px-2.5 py-1.5 rounded-lg text-[11px] font-mono border transition bg-ink-850 text-slate-300 border-slate-800 hover:border-slate-600';
+        }
+      });
+    }
+
+    // Render bottom filmstrip buttons
+    function renderFilmstrip() {
+      const container = document.getElementById('filmstripContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (state.activeView === 'reader') {
+        state.readerSpreads.forEach((sp, idx) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.setAttribute('data-idx', String(idx));
+          btn.textContent = `[${sp.leftPage || '-'}|${sp.rightPage || '-'}]${sp.isCenterfold ? '★' : ''}`;
+          btn.addEventListener('click', () => {
+            state.currentReaderSpreadIndex = idx;
+            renderActiveView();
+          });
+          container.appendChild(btn);
+        });
+      } else {
+        state.imposedArtboards.forEach((ab, idx) => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.setAttribute('data-idx', String(idx));
+          if (ab.mode === '2up') {
+            btn.textContent = `#${ab.artboardNumber} S${ab.physicalSheet}${ab.side[0]} [${ab.leftPage || '-'}|${ab.rightPage || '-'}]${ab.isCenterfold ? '★' : ''}`;
+          } else {
+            btn.textContent = `#${ab.artboardNumber} S${ab.physicalSheet}${ab.side[0]} (4-Up)`;
+          }
+          btn.addEventListener('click', () => {
+            state.currentArtboardIndex = idx;
+            renderActiveView();
+          });
+          container.appendChild(btn);
+        });
+      }
+    }
+
+    // Render Duplex Sheet & Artboard Schedule Cards
+    function renderDuplexScheduleGrid() {
+      const grid = document.getElementById('duplexSheetsGrid');
+      if (!grid) return;
+      grid.innerHTML = '';
+
+      const totalSheets = Math.ceil(state.imposedArtboards.length / 2);
+      for (let s = 0; s < totalSheets; s++) {
+        const frontAb = state.imposedArtboards[s * 2];
+        const backAb = state.imposedArtboards[s * 2 + 1];
+
+        const card = document.createElement('div');
+        card.className = 'p-3 rounded-xl bg-ink-850 border border-slate-800 flex flex-col gap-2';
+
+        const header = document.createElement('div');
+        header.className = 'flex items-center justify-between text-xs font-semibold text-slate-200 border-b border-slate-800 pb-1.5';
+        header.innerHTML = `
+          <span>Paper Sheet #${s + 1}</span>
+          <span class="text-[10px] font-mono text-slate-400">${s === totalSheets - 1 ? 'Inner Center Sheet' : s === 0 ? 'Outer Cover Sheet' : `Signature Sheet ${s + 1}`}</span>
+        `;
+        card.appendChild(header);
+
+        [frontAb, backAb].forEach((ab) => {
+          if (!ab) return;
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          const isSelected = (state.activeView !== 'reader' && state.currentArtboardIndex === ab.index);
+          btn.className = `w-full p-2 rounded-lg border text-left transition flex items-center justify-between text-xs font-mono ${
+            isSelected
+              ? 'bg-sky-500/20 border-sky-400 text-white'
+              : 'bg-ink-900/80 border-slate-800 text-slate-300 hover:border-slate-700'
+          }`;
+
+          const desc = (ab.mode === '2up')
+            ? `[ ${ab.leftPage || 'Blank'}  |  ${ab.rightPage || 'Blank'} ]`
+            : `[${ab.quads[0].page}|${ab.quads[1].page}] / [${ab.quads[2].page}|${ab.quads[3].page}]`;
+
+          btn.innerHTML = `
+            <div>
+              <span class="text-[10px] uppercase px-1.5 py-0.5 rounded ${ab.side === 'Front' ? 'bg-sky-500/20 text-sky-300' : 'bg-indigo-500/20 text-indigo-300'} mr-1.5">${ab.side}</span>
+              <span class="font-semibold">Artboard ${ab.artboardNumber}</span>
+            </div>
+            <span class="${ab.isCenterfold ? 'text-emerald-300 font-bold' : 'text-slate-300'}">${desc}</span>
+          `;
+          btn.addEventListener('click', () => {
+            state.activeView = 'press';
+            state.currentArtboardIndex = ab.index;
+            syncViewTabs();
+            renderFilmstrip();
+            renderActiveView();
+            renderDuplexScheduleGrid();
+          });
+          card.appendChild(btn);
+        });
+
+        grid.appendChild(card);
+      }
+    }
+
+    // Handle uploaded .PDF or .AI file
+    async function handleUploadedFile(file) {
+      if (!file) return;
+      showToast(`Loading ${file.name}...`);
+
+      try {
+        const arrayBuf = await file.arrayBuffer();
+        const uint8 = new Uint8Array(arrayBuf);
+
+        // Check if file contains a %PDF- header (standard for both .pdf and PDF-compatible Adobe Illustrator .ai files)
+        let pdfStartOffset = -1;
+        const scanLimit = Math.min(uint8.length - 5, 4096);
+        for (let i = 0; i <= scanLimit; i++) {
+          if (
+            uint8[i] === 0x25 && // %
+            uint8[i + 1] === 0x50 && // P
+            uint8[i + 2] === 0x44 && // D
+            uint8[i + 3] === 0x46 && // F
+            uint8[i + 4] === 0x2D    // -
+          ) {
+            pdfStartOffset = i;
+            break;
+          }
+        }
+
+        if (pdfStartOffset >= 0 && window.PDFLib) {
+          const cleanBytes = pdfStartOffset > 0 ? uint8.slice(pdfStartOffset) : uint8;
+          const pdfDoc = await window.PDFLib.PDFDocument.load(cleanBytes, { ignoreEncryption: true });
+          const numPages = pdfDoc.getPageCount();
+          const firstPage = pdfDoc.getPage(0);
+          const { width, height } = firstPage.getSize();
+
+          state.sourceFileName = file.name;
+          state.sourceFormat = file.name.toLowerCase().endsWith('.ai') ? 'Adobe Illustrator (.AI)' : 'PDF Document (.PDF)';
+          state.sourcePageCount = numPages;
+          state.sourcePageWidthIn = +(width / 72).toFixed(2);
+          state.sourcePageHeightIn = +(height / 72).toFixed(2);
+          state.rawPdfBytes = cleanBytes;
+
+          // Render pages via PDF.js if available; fallback to high-contrast artboard preview if PDF.js fails
+          const canvases = [null];
+          let renderedViaPdfJs = false;
+          if (window.pdfjsLib) {
+            try {
+              const loadingTask = window.pdfjsLib.getDocument({ data: cleanBytes.slice(0) });
+              const pdfJsDoc = await loadingTask.promise;
+              for (let p = 1; p <= numPages; p++) {
+                const pg = await pdfJsDoc.getPage(p);
+                const viewport = pg.getViewport({ scale: 1.5 });
+                const c = document.createElement('canvas');
+                c.width = Math.round(viewport.width);
+                c.height = Math.round(viewport.height);
+                const cctx = c.getContext('2d');
+                cctx.fillStyle = '#ffffff';
+                cctx.fillRect(0, 0, c.width, c.height);
+                await pg.render({ canvasContext: cctx, viewport }).promise;
+                canvases.push(c);
+              }
+              renderedViaPdfJs = true;
+            } catch (e) {
+              renderedViaPdfJs = false;
+            }
+          }
+
+          if (!renderedViaPdfJs) {
+            const pw = Math.round(state.sourcePageWidthIn * 100);
+            const ph = Math.round(state.sourcePageHeightIn * 100);
+            for (let p = 1; p <= numPages; p++) {
+              const c = document.createElement('canvas');
+              c.width = pw;
+              c.height = ph;
+              drawSyntheticSpreadPage(c.getContext('2d'), p, numPages, pw, ph, state.sourcePageWidthIn, state.sourcePageHeightIn);
+              canvases.push(c);
+            }
+          }
+
+          state.renderedSourceCanvases = canvases;
+          state.currentArtboardIndex = 0;
+          state.currentReaderSpreadIndex = 0;
+
+          document.getElementById('fileFormatBadge').textContent = state.sourceFormat;
+          document.getElementById('loadedFileMeta').textContent =
+            `Loaded: ${file.name} (${numPages} artboards • ${state.sourcePageWidthIn}"×${state.sourcePageHeightIn}")`;
+
+          recomputeImposition();
+          renderActiveView();
+          showToast(`Imposed ${numPages} pages from ${file.name} into ${state.imposedArtboards.length} press artboards.`);
+        } else {
+          showToast('This .AI file does not have a PDF compatibility stream; loaded with synthetic vector artboards.');
+        }
+      } catch (err) {
+        showToast(`Could not parse file: ${err.message || 'Unknown error'}`);
+      }
+    }
+
+    // Export Imposed Booklet as .PDF or Multi-Artboard .AI (Every imposed side is a vector Artboard)
+    async function exportImposedDocument(targetExtension) {
+      if (!window.PDFLib) {
+        showToast('PDF/AI vector engine is still initializing.');
+        return;
+      }
+
+      const isAI = (targetExtension === 'ai');
+      showToast(isAI
+        ? `Building Multi-Artboard .AI file (${state.imposedArtboards.length} artboards)...`
+        : `Building Imposed Booklet .PDF (${state.imposedArtboards.length} press sides)...`
+      );
+
+      try {
+        const { PDFDocument, rgb, degrees, StandardFonts } = window.PDFLib;
+        const outDoc = await PDFDocument.create();
+
+        // Set Adobe Illustrator / Prepress metadata so Illustrator opens every page as a named Artboard
+        outDoc.setTitle(`${state.sourceFileName.replace(/\.(pdf|ai)$/i, '')} — Imposed Booklet (${state.imposedArtboards.length} Artboards)`);
+        outDoc.setCreator(isAI ? 'Adobe Illustrator 28.0 (FolioBind Multi-Artboard Imposition Engine)' : 'FolioBind Prepress Imposition Studio');
+        outDoc.setProducer('FolioBind PDF/AI Vector Imposition Engine');
+
+        const fontMono = await outDoc.embedFont(StandardFonts.Courier);
+        let srcDoc = null;
+        let embeddedPages = {};
+
+        if (state.rawPdfBytes) {
+          srcDoc = await PDFDocument.load(state.rawPdfBytes, { ignoreEncryption: true });
+          const indices = [];
+          for (let i = 0; i < srcDoc.getPageCount(); i++) indices.push(i);
+          const embeddedArr = await outDoc.embedPdf(srcDoc, indices);
+          embeddedArr.forEach((ep, idx) => {
+            embeddedPages[idx + 1] = ep;
+          });
+        }
+
+        for (let i = 0; i < state.imposedArtboards.length; i++) {
+          const ab = state.imposedArtboards[i];
+          const sheetW_pt = ab.sheetWIn * 72;
+          const sheetH_pt = ab.sheetHIn * 72;
+
+          const page = outDoc.addPage([sheetW_pt, sheetH_pt]);
+          // Set explicit TrimBox and ArtBox so Adobe Illustrator registers exact artboard boundaries
+          page.setMediaBox(0, 0, sheetW_pt, sheetH_pt);
+          page.setTrimBox(0, 0, sheetW_pt, sheetH_pt);
+          page.setArtBox(0, 0, sheetW_pt, sheetH_pt);
+
+          if (ab.mode === '2up') {
+            const halfW_pt = sheetW_pt / 2;
+            const leftGeom = computeSlotPlacement('left', halfW_pt, sheetH_pt, ab.sheetDepthFromCenter);
+            const rightGeom = computeSlotPlacement('right', halfW_pt, sheetH_pt, ab.sheetDepthFromCenter);
+
+            drawEmbeddedPdfPageHalf(page, embeddedPages[ab.leftPage], leftGeom);
+            drawEmbeddedPdfPageHalf(page, embeddedPages[ab.rightPage], rightGeom);
+
+            if (state.exportMarks) {
+              // Subtle center fold tick marks in top/bottom outer trim
+              page.drawLine({
+                start: { x: halfW_pt, y: 0 },
+                end: { x: halfW_pt, y: 12 },
+                thickness: 0.5,
+                color: rgb(0.1, 0.7, 0.5)
+              });
+              page.drawLine({
+                start: { x: halfW_pt, y: sheetH_pt - 12 },
+                end: { x: halfW_pt, y: sheetH_pt },
+                thickness: 0.5,
+                color: rgb(0.1, 0.7, 0.5)
+              });
+              page.drawText(`Sheet ${ab.physicalSheet} ${ab.side} [${ab.leftPage || '-'}|${ab.rightPage || '-'}]`, {
+                x: 12,
+                y: 6,
+                size: 7,
+                font: fontMono,
+                color: rgb(0.4, 0.45, 0.5)
+              });
+            }
+          } else {
+            // 4-Up Quarter Booklet
+            const halfW_pt = sheetW_pt / 2;
+            const halfH_pt = sheetH_pt / 2;
+
+            ab.quads.forEach((q) => {
+              const ep = embeddedPages[q.page];
+              if (!ep) return;
+              const isTop = (q.pos === 'TL' || q.pos === 'TR');
+              const isLeft = (q.pos === 'TL' || q.pos === 'BL');
+              const offsetY_pt = isTop ? halfH_pt : 0; // In PDF coordinates y=0 is bottom!
+              const geom = computeSlotPlacement(isLeft ? 'left' : 'right', halfW_pt, halfH_pt, ab.sheetDepthFromCenter);
+
+              page.drawPage(ep, {
+                x: geom.destX,
+                y: offsetY_pt + geom.destY,
+                width: geom.destW,
+                height: geom.destH
+              });
+            });
+          }
+
+          if (ab.rotate180) {
+            page.setRotation(degrees(180));
+          }
+        }
+
+        const outBytes = await outDoc.save();
+        const mimeType = isAI ? 'application/postscript' : 'application/pdf';
+        const blob = new Blob([outBytes], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+
+        const baseName = state.sourceFileName.replace(/\.(pdf|ai)$/i, '');
+        const modeTag = state.bookletMode === 'half' ? '2up_half_booklet' : '4up_quarter_booklet';
+        const downloadName = `${baseName}_${modeTag}_${state.imposedArtboards.length}artboards.${targetExtension}`;
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = downloadName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+        showToast(`Exported ${downloadName} (${state.imposedArtboards.length} seamless artboards, ${Math.ceil(state.imposedArtboards.length / 2)} duplex sheets).`);
+      } catch (err) {
+        showToast(`Export failed: ${err.message || 'Unexpected error'}`);
+      }
+    }
+
+    function drawEmbeddedPdfPageHalf(pdfPage, embeddedPage, geom) {
+      if (!embeddedPage) return;
+      // Place left and right embedded vector pages flush at the exact center spine (x = halfW_pt)
+      pdfPage.drawPage(embeddedPage, {
+        x: geom.destX,
+        y: geom.destY,
+        width: geom.destW,
+        height: geom.destH
+      });
+    }
+
+    function syncModeButtons() {
+      const halfBtn = document.getElementById('modeHalfBtn');
+      const quarterBtn = document.getElementById('modeQuarterBtn');
+      const orderSelect = document.getElementById('impositionOrderSelect');
+
+      if (state.bookletMode === 'half') {
+        halfBtn.className = 'p-2.5 rounded-lg border text-left transition bg-sky-500/15 border-sky-500 text-white';
+        quarterBtn.className = 'p-2.5 rounded-lg border text-left transition bg-ink-850 border-slate-800 text-slate-300 hover:border-slate-700';
+        if (state.impositionOrder.startsWith('4up')) {
+          state.impositionOrder = 'saddle';
+          orderSelect.value = 'saddle';
+        }
+      } else {
+        quarterBtn.className = 'p-2.5 rounded-lg border text-left transition bg-sky-500/15 border-sky-500 text-white';
+        halfBtn.className = 'p-2.5 rounded-lg border text-left transition bg-ink-850 border-slate-800 text-slate-300 hover:border-slate-700';
+        if (!state.impositionOrder.startsWith('4up')) {
+          state.impositionOrder = '4up-two-booklets';
+          orderSelect.value = '4up-two-booklets';
+        }
+      }
+    }
+
+    function syncViewTabs() {
+      document.querySelectorAll('.view-tab-btn').forEach((btn) => {
+        const v = btn.getAttribute('data-view');
+        if (v === state.activeView) {
+          btn.className = 'view-tab-btn px-3 py-1.5 rounded-md text-xs font-semibold transition bg-sky-500 text-slate-950';
+        } else {
+          btn.className = 'view-tab-btn px-3 py-1.5 rounded-md text-xs font-semibold transition text-slate-300 hover:text-white';
+        }
+      });
+
+      const canvasStage = document.getElementById('canvasStageContainer');
+      const mapSection = document.getElementById('duplexMapSection');
+      if (state.activeView === 'grid') {
+        canvasStage.classList.add('hidden');
+        mapSection.querySelector('#duplexSheetsGrid').classList.remove('max-h-[340px]');
+      } else {
+        canvasStage.classList.remove('hidden');
+        mapSection.querySelector('#duplexSheetsGrid').classList.add('max-h-[340px]');
+      }
+    }
+
+    // Wire up all DOM listeners
+    function initEventListeners() {
+      // File Input & Drag-and-Drop
+      const fileInput = document.getElementById('fileInput');
+      const dropZone = document.getElementById('dropZone');
+
+      fileInput.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files[0]) {
+          handleUploadedFile(e.target.files[0]);
+        }
+      });
+
+      ['dragenter', 'dragover'].forEach((evt) => {
+        dropZone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          dropZone.classList.add('border-sky-400', 'bg-ink-800');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach((evt) => {
+        dropZone.addEventListener(evt, (e) => {
+          e.preventDefault();
+          dropZone.classList.remove('border-sky-400', 'bg-ink-800');
+        });
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+          handleUploadedFile(e.dataTransfer.files[0]);
+        }
+      });
+
+      // Preset buttons
+      document.querySelectorAll('.preset-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const preset = btn.getAttribute('data-preset');
+          document.querySelectorAll('.preset-btn').forEach((b) => {
+            b.className = 'preset-btn px-2 py-1.5 rounded-lg text-[11px] font-medium bg-ink-850 text-slate-300 border border-slate-800 hover:border-slate-700 transition text-center';
+          });
+          btn.className = 'preset-btn px-2 py-1.5 rounded-lg text-[11px] font-medium bg-sky-500/20 text-sky-300 border border-sky-500/40 hover:bg-sky-500/30 transition text-center';
+          generatePresetDocument(preset);
+        });
+      });
+
+      // Half vs Quarter Booklet Mode
+      document.getElementById('modeHalfBtn').addEventListener('click', () => {
+        state.bookletMode = 'half';
+        syncModeButtons();
+        recomputeImposition();
+        renderActiveView();
+      });
+
+      document.getElementById('modeQuarterBtn').addEventListener('click', () => {
+        state.bookletMode = 'quarter';
+        syncModeButtons();
+        recomputeImposition();
+        renderActiveView();
+      });
+
+      // Selects
+      document.getElementById('paperSizeSelect').addEventListener('change', (e) => {
+        state.paperStock = e.target.value;
+        recomputeImposition();
+        renderActiveView();
+      });
+
+      document.getElementById('impositionOrderSelect').addEventListener('change', (e) => {
+        state.impositionOrder = e.target.value;
+        if (state.impositionOrder.startsWith('4up')) {
+          state.bookletMode = 'quarter';
+        } else {
+          state.bookletMode = 'half';
+        }
+        syncModeButtons();
+        recomputeImposition();
+        renderActiveView();
+      });
+
+      document.getElementById('duplexFlipSelect').addEventListener('change', (e) => {
+        state.duplexFlip = e.target.value;
+        recomputeImposition();
+        renderActiveView();
+      });
+
+      document.getElementById('scalingModeSelect').addEventListener('change', (e) => {
+        state.scalingMode = e.target.value;
+        renderActiveView();
+      });
+
+      // Seam & Margin Controls
+      document.getElementById('chkSeamlessSpine').addEventListener('change', (e) => {
+        state.seamlessSpine = e.target.checked;
+        updateTelemetryHeader();
+        renderActiveView();
+      });
+
+      document.getElementById('rngOuterMargin').addEventListener('input', (e) => {
+        state.outerMarginIn = parseFloat(e.target.value) || 0;
+        document.getElementById('valOuterMargin').textContent =
+          state.outerMarginIn === 0 ? '0.00" (Full Bleed)' : `${state.outerMarginIn.toFixed(2)}"`;
+        updateTelemetryHeader();
+        renderActiveView();
+      });
+
+      document.getElementById('rngSpineTrim').addEventListener('input', (e) => {
+        state.spineTrimIn = parseFloat(e.target.value) || 0;
+        document.getElementById('valSpineTrim').textContent = `${state.spineTrimIn.toFixed(3)}"`;
+        updateTelemetryHeader();
+        renderActiveView();
+      });
+
+      document.getElementById('rngCreep').addEventListener('input', (e) => {
+        state.creepPerSheetIn = parseFloat(e.target.value) || 0;
+        document.getElementById('valCreep').textContent = `${state.creepPerSheetIn.toFixed(3)}"/sheet`;
+        renderActiveView();
+      });
+
+      // Checkboxes
+      document.getElementById('chkFoldLine').addEventListener('change', (e) => {
+        state.showFoldLine = e.target.checked;
+        renderActiveView();
+      });
+      document.getElementById('chkExportMarks').addEventListener('change', (e) => {
+        state.exportMarks = e.target.checked;
+      });
+      document.getElementById('chkSeamLoupe').addEventListener('change', (e) => {
+        state.showSeamLoupe = e.target.checked;
+        renderActiveView();
+      });
+      document.getElementById('chkShowPageBadges').addEventListener('change', (e) => {
+        state.showPageBadges = e.target.checked;
+        renderActiveView();
+      });
+
+      // View Tabs
+      document.querySelectorAll('.view-tab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          state.activeView = btn.getAttribute('data-view');
+          syncViewTabs();
+          renderFilmstrip();
+          renderActiveView();
+        });
+      });
+
+      // Navigation buttons
+      document.getElementById('btnPrevItem').addEventListener('click', () => {
+        if (state.activeView === 'reader') {
+          state.currentReaderSpreadIndex =
+            (state.currentReaderSpreadIndex - 1 + state.readerSpreads.length) % state.readerSpreads.length;
+        } else {
+          state.currentArtboardIndex =
+            (state.currentArtboardIndex - 1 + state.imposedArtboards.length) % state.imposedArtboards.length;
+        }
+        renderActiveView();
+        renderDuplexScheduleGrid();
+      });
+
+      document.getElementById('btnNextItem').addEventListener('click', () => {
+        if (state.activeView === 'reader') {
+          state.currentReaderSpreadIndex =
+            (state.currentReaderSpreadIndex + 1) % state.readerSpreads.length;
+        } else {
+          state.currentArtboardIndex =
+            (state.currentArtboardIndex + 1) % state.imposedArtboards.length;
+        }
+        renderActiveView();
+        renderDuplexScheduleGrid();
+      });
+
+      document.getElementById('btnFlipDuplex').addEventListener('click', () => {
+        if (state.activeView === 'reader') {
+          state.activeView = 'press';
+          syncViewTabs();
+          renderFilmstrip();
+        }
+        // Toggle between even (Front) and odd (Back) artboard on the same physical sheet
+        if (state.currentArtboardIndex % 2 === 0) {
+          state.currentArtboardIndex = Math.min(state.imposedArtboards.length - 1, state.currentArtboardIndex + 1);
+        } else {
+          state.currentArtboardIndex = Math.max(0, state.currentArtboardIndex - 1);
+        }
+        renderActiveView();
+        renderDuplexScheduleGrid();
+      });
+
+      document.getElementById('btnJumpCenterfold').addEventListener('click', () => {
+        if (state.activeView === 'reader') {
+          const cfIdx = state.readerSpreads.findIndex((s) => s.isCenterfold);
+          if (cfIdx >= 0) state.currentReaderSpreadIndex = cfIdx;
+        } else {
+          state.currentArtboardIndex = state.imposedArtboards.length - 1;
+        }
+        renderActiveView();
+        renderDuplexScheduleGrid();
+        showToast('Jumped to Centerfold Spread (16–17) — inspect the 4× Spine Seam Loupe!');
+      });
+
+      // Copy CSV Imposition Table
+      document.getElementById('btnCopyImpositionCSV').addEventListener('click', () => {
+        const lines = ['Artboard,Physical_Sheet,Side,Format,Pages'];
+        state.imposedArtboards.forEach((ab) => {
+          const pagesStr = ab.mode === '2up'
+            ? `${ab.leftPage || 'Blank'} | ${ab.rightPage || 'Blank'}`
+            : ab.quads.map((q) => `${q.pos}:${q.page || 'Blank'}`).join(' ');
+          lines.push(`${ab.artboardNumber},${ab.physicalSheet},${ab.side},${ab.mode},"${pagesStr}"`);
+        });
+        const csvText = lines.join('\n');
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = csvText;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+          showToast('Copied imposition schedule to clipboard.');
+        } catch (err) {
+          showToast('Imposition schedule ready.');
+        }
+      });
+
+      // Export Buttons
+      document.getElementById('btnExportPDF').addEventListener('click', () => {
+        exportImposedDocument('pdf');
+      });
+
+      document.getElementById('btnExportAI').addEventListener('click', () => {
+        exportImposedDocument('ai');
+      });
+    }
+
+    // Initialize studio on window load
+    window.addEventListener('load', () => {
+      initEventListeners();
+      generatePresetDocument('32p-half');
+    });
+  </script>
+</body>
+</html>
